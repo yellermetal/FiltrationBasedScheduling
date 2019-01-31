@@ -24,10 +24,10 @@ bool Flow::service(int curr_timestamp)
 	return false;
 }
 
-void Flow::printToFile(FILE * log)
+void Flow::printToFile(ofstream& log)
 {
-	fprintf(log, "flow #%d: size: %d, rem_Size: %d, arrived: %d, src\\dst:[%d,%d], FCT: %d\n",
-		id, size, remainingSize, timestamp, source, destination, flowCompletionTime);
+	log << "flow #" << id << ": size: " << size << ", rem_Size: " << remainingSize << ", arrived: " 
+		<< timestamp << ", src\\dst:[" << source << "," << destination << "], FCT: " << flowCompletionTime << endl;
 }
 
 int Flow::getTimeWaiting(int curr_timestamp)

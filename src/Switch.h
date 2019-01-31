@@ -2,26 +2,22 @@
 #ifndef SWITCH_H
 #define SWITCH_H
 
-#include "Observer.h"
-#include "Clock.h"
 #include "Config.h"
 #include "Demand.h"
 #include "Scheduler.h"
 
-
-class Switch :
-	public Observer
+class Switch
 {
 public:
-	Switch(int switchRadix, Demand& demand, Scheduler& scheduler);
-	void update(Observable& observable);
+	Switch(int switchRadix, Demand& demand, Scheduler* scheduler);
+	void update(int clock);
 
 
 private:
 	int switchRadix;
 	Config* currConfig;
 	Demand& demand;
-	Scheduler& scheduler;
+	Scheduler* scheduler;
 
 
 };

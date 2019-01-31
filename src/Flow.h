@@ -3,13 +3,16 @@
 #define FLOW_H
 
 #include <iostream>
+#include <fstream>
+
+using namespace std;
 
 class Flow {
 public:
 	
 	Flow(int size, int timestamp, int src, int dst);
 	bool service(int curr_timestamp);
-	void printToFile(FILE* log);
+	void printToFile(ofstream& log);
 	int getTimeWaiting(int curr_timestamp);
 
 	int id;		

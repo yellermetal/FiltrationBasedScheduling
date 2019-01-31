@@ -29,26 +29,24 @@ Timeline::Timeline(Timeline & timeline)
 int** Timeline::getDemand()
 {
 
-	if (flows.empty()) return nullptr;
-
 	int** demandMatrix = new int*[switchRadix];
 	for (int i = 0; i < switchRadix; ++i)
 		demandMatrix[i] = new int[switchRadix]();
 
-	int src, dst;
-	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
+	for (auto iter = flows.begin(); iter != flows.end(); ++iter) {
 		
-		src = (*iter)->source;
-		dst = (*iter)->destination;
+		Flow* flow = *iter;
+		int src = flow->source;
+		int dst = flow->destination;
 
 		assert(src < switchRadix && dst < switchRadix);
 
-		if ((*iter)->markedForScheduling == false &&
-			(*iter)->timestamp <= currTime && 
-			(*iter)->remainingSize > 0) {
+		if (flow->markedForScheduling == false &&
+			flow->timestamp <= currTime &&
+			flow->remainingSize > 0) {
 							
-				demandMatrix[src][dst] += (*iter)->remainingSize;
-				(*iter)->markedForScheduling = true;
+				demandMatrix[src][dst] += flow->remainingSize;
+				flow->markedForScheduling = true;
 		}
 	}
 
@@ -59,20 +57,23 @@ void Timeline::serveDemand(Config* config)
 {
 	int* flow_serviced = new int[switchRadix]();
 
-	int src, dst, rSize, arrival;
 	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
 		
-		src = (*iter)->source;
-		dst = (*iter)->destination;
-		rSize = (*iter)->remainingSize;
-		arrival = (*iter)->timestamp;
+		Flow* flow = *iter;
+		int src = flow->source;
+		int dst = flow->destination;
+		int rSize = flow->remainingSize;
+		int arrival = flow->timestamp;
 		if ((rSize > 0) &&
 			(src == config->getPermMatrix()[dst]) &&
 			(arrival <= currTime) &&
 			(flow_serviced[src] == 0)) {
-			if ((*iter)->service(currTime))
+			if (flow->service(currTime)) {
 				flowNumber--;
-			flow_serviced[src] = 1;
+				if (flowNumber == 0)
+					cout << "Timeline has been served!" << endl;
+			}
+			flow_serviced[src]++;
 		}
 	}
 
@@ -82,11 +83,14 @@ void Timeline::serveDemand(Config* config)
 void Timeline::reset()
 {
 	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
-		(*iter)->remainingSize = (*iter)->size;
-		(*iter)->flowCompletionTime = -1;
-		(*iter)->markedForScheduling = false;
+		Flow* flow = *iter;
+		flow->remainingSize = flow->size;
+		flow->flowCompletionTime = -1;
+		flow->markedForScheduling = false;
 		flowNumber++;
 	}
+
+	currTime = 0;
 }
 
 bool Timeline::isEmpty()
@@ -94,40 +98,41 @@ bool Timeline::isEmpty()
 	return flowNumber == 0;
 }
 
-void Timeline::printToFile(FILE * log)
+void Timeline::printToFile(ofstream& file)
 {
-	for (auto iter = flows.begin(); iter != flows.end(); iter++)
-		(*iter)->printToFile(log);
+	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
+		Flow* flow = *iter;
+		flow->printToFile(file);
+	}
+	file.close();
 }
 
 
-void Timeline::update(Observable& observable)
+void Timeline::update(int clock)
 {
-	Clock& clock = (Clock &)(observable);
-	currTime = clock.time();
+	currTime = clock;
 }
 
 int ** FilteredTimeline::getDemand()
 {
-	if (flows.empty()) return nullptr;
-
 	int** demandMatrix = new int*[switchRadix];
 	for (int i = 0; i < switchRadix; ++i)
 		demandMatrix[i] = new int[switchRadix]();
 
-	int src, dst;
+
 	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
 		
-		src = (*iter)->source;
-		dst = (*iter)->destination;
+		Flow* flow = *iter;
+		int src = flow->source;
+		int dst = flow->destination;
 		assert(src < switchRadix && dst < switchRadix);
 
-		if ((*iter)->markedForScheduling == false &&
-			(*iter)->timestamp <= currTime &&
-			(*iter)->remainingSize + (*iter)->getTimeWaiting(currTime) >= threshold) {
+		if (flow->markedForScheduling == false &&
+			flow->timestamp <= currTime &&
+			flow->remainingSize + flow->getTimeWaiting(currTime) >= threshold) {
 
-				demandMatrix[src][dst] += (*iter)->remainingSize;
-				(*iter)->markedForScheduling = true;
+				demandMatrix[src][dst] += flow->remainingSize;
+				flow->markedForScheduling = true;
 		}
 		
 	}

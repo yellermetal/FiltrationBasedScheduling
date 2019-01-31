@@ -6,7 +6,6 @@
 #include "Demand.h"
 #include "Flow.h"
 #include "SMG.h"
-#include "Clock.h"
 #include <vector>
 
 #define WINDOW_NUM 10
@@ -32,8 +31,8 @@ public:
 	void serveDemand(Config* config);
 	void reset();
 	bool isEmpty();
-	void printToFile(FILE * log);
-	void update(Observable& observable);
+	void printToFile(ofstream& file);
+	void update(int clock);
 
 protected:
 	int switchRadix;

@@ -14,45 +14,53 @@ void freeDemandMatrix(int** demandMatrix, int switchRadix) {
 	delete[] demandMatrix;
 }
 
-Scheduler::Scheduler(string _name, int _switchRadix, double _reconfig_penalty, Clock & clock, lms_config_ptr(*_scheduler)(lms_mat_ptr, double))
-	: config_queue(new ConfigQueue(_switchRadix)), schedulingDelay(new Delay()), runtimeDelay(new Delay()),
-	  switchRadix(_switchRadix), reconfig_penalty(_reconfig_penalty), runtime(0), scheduler(_scheduler), schedule(nullptr), name(_name)
+Scheduler::Scheduler(string _name, int _switchRadix, double _reconfig_penalty, lms_config_ptr(*_scheduler)(lms_mat_ptr, double))
 {
-	clock.attach(*runtimeDelay);
-	clock.attach(*schedulingDelay);
+	switchRadix = _switchRadix;
+	reconfig_penalty = _reconfig_penalty;
+	config_queue = new ConfigQueue(switchRadix);
+	scheduler = _scheduler;
+	name = _name;
+
+	reset();
 }
 
-Scheduler::~Scheduler() {
+Scheduler::~Scheduler()
+{
 	delete config_queue;
-	delete runtimeDelay;
-	delete schedulingDelay;
 }
 
 bool Scheduler::readyToSchedule()
 {
-	return (runtimeDelay->getDelay() == 0) && (schedulingDelay->getDelay() == 0);
+	return (runtimeDelay == 0) && (schedulingDelay == 0);
 }
 
 void Scheduler::Schedule(int ** demandMatrix)
 {
 	assert(demandMatrix != nullptr);
 
-	if (isDemandMatrixEmpty(demandMatrix, switchRadix))
+	if (isDemandMatrixEmpty(demandMatrix, switchRadix)) {
 		freeDemandMatrix(demandMatrix, switchRadix);
+		return;
+	}
 
-		lms_mat_ptr mat_ptr = Make_Matrix(switchRadix, demandMatrix);
+	lms_mat_ptr mat_ptr = Make_Matrix(switchRadix, demandMatrix);
 
-		high_resolution_clock::time_point t1 = high_resolution_clock::now();
-		schedule = scheduler(mat_ptr, reconfig_penalty);
-		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	schedule = scheduler(mat_ptr, reconfig_penalty);
+	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 
-		duration<double, micro> fp_us = t2 - t1;
-		delete runtimeDelay;
-		runtimeDelay = new Delay(fp_us.count());
-		runtime = runtimeDelay->getDelay();
+	duration<double, micro> fp_us = t2 - t1;
+	runtimeDelay = fp_us.count();
 
-		Free_Matrix(mat_ptr);
-		freeDemandMatrix(demandMatrix, switchRadix);
+	if (adaptiveSchedulingDelay)
+		schedulingDelay = runtimeDelay + max(switchRadix * reconfig_penalty, 
+											 config_queue->getDemandCompletionTime() - runtimeDelay);
+	else
+		schedulingDelay = max(TRIVIAL_DELAY, runtimeDelay);
+
+	Free_Matrix(mat_ptr);
+	freeDemandMatrix(demandMatrix, switchRadix);
 }
 
 Config * Scheduler::getNextConfig()
@@ -63,33 +71,44 @@ Config * Scheduler::getNextConfig()
 		return config_queue->dequeue();
 }
 
-void Scheduler::useAdaptiveSchedulingDelay(Clock& clock, bool chosen)
+void Scheduler::useAdaptiveSchedulingDelay(bool chosen)
 {
-	delete schedulingDelay;
-	if (chosen)
-		schedulingDelay = new AdaptiveDelay(switchRadix, reconfig_penalty, *config_queue);
-	else
-		schedulingDelay = new Delay();
-
-	clock.attach(*schedulingDelay);
+	adaptiveSchedulingDelay = chosen;
 }
 
-FILE * Scheduler::openFile()
+void Scheduler::reset() {
+	schedule = nullptr;
+	runtimeDelay = 0;
+	schedulingDelay = TRIVIAL_DELAY;
+	adaptiveSchedulingDelay = false;
+}
+
+void Scheduler::openFile(ofstream& file)
 {
 	string prefix = "./Results/";
 	string suffix = ".txt";
 	string filename = prefix + name + suffix;
-	return fopen(filename.c_str(), "w");
+	file.open(filename.c_str());
 }
 
-void Scheduler::update(Observable& observable)
+void Scheduler::update(int clock)
 {
-	if (runtimeDelay->getDelay() == 0) {
-		config_queue->enqueue(schedule);
-		schedule = nullptr;
 
-		if (schedulingDelay->getDelay() == 0) {
-			schedulingDelay->setDelay(runtime);
+	if (runtimeDelay > 0) {
+		runtimeDelay--;
+
+		if (runtimeDelay == 0) {
+			config_queue->enqueue(schedule);
+			if (schedule)
+				cout << name << " commited a schedule." << endl;
+			schedule = nullptr;
 		}
 	}
+
+	if (schedulingDelay > 0)
+		schedulingDelay--;
+
+	else
+		cout << "Starting scheduling," << " time: " << clock << endl;
+
 }

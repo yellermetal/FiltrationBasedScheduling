@@ -2,11 +2,9 @@
 #ifndef DEMAND_H
 #define DEMAND_H
 
-#include "Observer.h"
 #include "Config.h"
 
-class Demand :
-	public Observer
+class Demand
 {
 public:
 	virtual ~Demand() {};
