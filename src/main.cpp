@@ -24,8 +24,10 @@ int main(int argc, char *argv[]) {
 	params.heavy_range[0] = atoi(argv[ind++]);
 	params.heavy_range[1] = atoi(argv[ind++]);
 
-	Timeline timeline(params);
-	//FilteredTimeline filtered_timeline(timeline, reconfig_penalty);
+	Timeline basic_timeline(params);
+	FilteredTimeline filtered_timeline(basic_timeline, reconfig_penalty);
+
+	Timeline& timeline = filtered_timeline;
 
 	Scheduler* schedulers[NUM_SCHED] = { new Lumos(params.switchRadix, reconfig_penalty), 
 										new Solstice(params.switchRadix, reconfig_penalty),
@@ -35,22 +37,31 @@ int main(int argc, char *argv[]) {
 
 	for (int sched = 0; sched < NUM_SCHED; sched++) {
 
-		Switch optical_circuit_switch(params.switchRadix, timeline, schedulers[sched]);
-		schedulers[sched]->useAdaptiveSchedulingDelay(true);
+		int adaptive = true;
+		do {
 
-		for (int clock = 0; !timeline.isEmpty(); clock++) {
-			timeline.update(clock);
-			schedulers[sched]->update(clock);
-			optical_circuit_switch.update(clock);
+			Switch optical_circuit_switch(params.switchRadix, reconfig_penalty, timeline, schedulers[sched]);
+			schedulers[sched]->reset();
+			schedulers[sched]->useAdaptiveSchedulingDelay(adaptive);
 
-		}
 
-		ofstream file;
-		schedulers[sched]->openFile(file);
-		assert(file.is_open());
-		timeline.printToFile(file);
-		timeline.reset();
+			for (int clock = 0; !timeline.isEmpty(); clock++) {
+				timeline.update(clock);
+				schedulers[sched]->update(clock);
+				optical_circuit_switch.update(clock);
+
+			}
+
+			ofstream file;
+			schedulers[sched]->openFile(file);
+			assert(file.is_open());
+			timeline.printToFile(file);
+			timeline.reset();
+
+		} while(adaptive--);
+
 		delete schedulers[sched];
+
 	}
 	
 	return 0;

@@ -85,7 +85,13 @@ void Scheduler::reset() {
 
 void Scheduler::openFile(ofstream& file)
 {
-	string prefix = "./Results/";
+
+	string prefix;
+	if (adaptiveSchedulingDelay)
+		prefix = "./Results/adaptive";
+	else
+		prefix = "./Results/";
+
 	string suffix = ".txt";
 	string filename = prefix + name + suffix;
 	file.open(filename.c_str());

@@ -10,6 +10,10 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import subprocess
+import os
+
+if not os.path.isdir("Results"):
+	os.mkdir("Results")
 
 Error = 1
 args = []
@@ -55,7 +59,7 @@ flows = [{},{},{}]
 num_of_flows = [0,0,0]
 total_FCT = [0,0,0]
 total_slowdown = [0,0,0]
-logfile = [open("Results/Solstice_logfile.txt", "r"),  open("Results/Lumos_logfile.txt", "r"),  open("Results/Eclipse_logfile.txt", "r")]
+logfile = [open("Results/Solstice.txt", "r"),  open("Results/Lumos.txt", "r"),  open("Results/Eclipse.txt", "r")]
 
 for sched,scheduler_log in enumerate(logfile):
     for line in scheduler_log:

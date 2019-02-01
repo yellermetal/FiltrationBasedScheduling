@@ -9,12 +9,14 @@
 class Switch
 {
 public:
-	Switch(int switchRadix, Demand& demand, Scheduler* scheduler);
+	Switch(int switchRadix, int reconfig_penalty, Demand& demand, Scheduler* scheduler);
 	void update(int clock);
 
 
 private:
 	int switchRadix;
+	int reconfig_penalty;
+	int reconfig_delay;
 	Config* currConfig;
 	Demand& demand;
 	Scheduler* scheduler;
