@@ -6,113 +6,169 @@
 */
 '''
 
-import re
-import matplotlib.pyplot as plt
-import numpy as np
 import subprocess
+import shutil
 import os
 
-if not os.path.isdir("Results"):
-	os.mkdir("Results")
 
 Error = 1
-args = []
+args = {}
 
-switch_radix = 16
-args.append(str(switch_radix))
+# Delete old files
+old_results = os.listdir(".")
+for directory in old_results:
+	if "Results" in directory:
+		shutil.rmtree(directory)
+		
 
-delta = 20
-args.append(str(delta))
-
-time_window_width = 3000
-args.append(str(time_window_width))
-
-light_flows_num = 12
-args.append(str(light_flows_num))
-
-heavy_flows_num = 4
-args.append(str(heavy_flows_num))
-
-light_range = [1,16]
-args.append(str(light_range[0]))
-args.append(str(light_range[1]))
-
-heavy_range = [16,100]
-args.append(str(heavy_range[0]))
-args.append(str(heavy_range[1]))
-
+#call makefile
 if (subprocess.call("make") == Error):
 	raise Exception('make: Error 1')
-subprocess.call(["./HBS"] + args)
+	
+sims_desc = open("SimsDesc.txt", "w")
+	
+def runSim(sim_num, args):
+	if not os.path.isdir("Results"):
+		os.mkdir("Results")
+		
+	params = [str(args['switch_radix']), str(args['reconfig_penalty']), str(args['time_window_width']), str(args['light_flows_num']), \
+			 str(args['heavy_flows_num']), str(args['light_range'][0]),str(args['light_range'][1]), str(args['heavy_range'][0]), \
+			 str(args['heavy_range'][1]), str(args['adaptive']), str(args['useFilter']), str(args['threshold']) ]
+
+	print "Begin Sim #", sim_num
+	subprocess.call(["./HBS"] + params)
+	print "Sim #", sim_num, " finished successfully"
+	
+	os.rename("Results", "Results-Sim" + str(sim_num))
+	print "Saved results to Results-Sim", sim_num
+	
+	print_vals = tuple([str(sim_num)] + params)
+	
+	sim_desc = "Sim-#%s: switch_radix: %s, reconfig_penalty: %s, time_window_width: %s, light_flows_num: %s, heavy_flows_num: %s, light_range: [%s,%s], heavy_range: [%s,%s], adaptive: %s, useFilter: %s, threshold: %s\n" % print_vals
+	
+	sims_desc.write(sim_desc)
+	
+# default args:
+args['switch_radix'] = 16
+args['reconfig_penalty'] = 20
+args['time_window_width'] = 3000
+args['light_flows_num'] = 12
+args['heavy_flows_num'] = 4
+args['light_range'] = [1,16]
+args['heavy_range'] = [16,100]
+args['adaptive'] = 0
+args['useFilter'] = 0
+args['threshold'] = 20*8
+
+sims_to_run = range(1,11)
+sim = 1
+
+# --------------------------------------------- Non-Adaptive Batch	--------------------------------------------- #
+	
+# --------------------------------- Sim 1 --------------------------------- #
+
+
+args['switch_radix'] = 16
+args['adaptive'] = 0
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------- Sim 2 --------------------------------- #
+
+args['switch_radix'] = 32
+args['adaptive'] = 0
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------- Sim 3 --------------------------------- #
+
+args['switch_radix'] = 64
+args['adaptive'] = 0
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------------------- Adaptive Batch	------------------------------------------------ #
+
+# --------------------------------- Sim 4 --------------------------------- #
+
+args['switch_radix'] = 16
+args['adaptive'] = 1
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------- Sim 5 --------------------------------- #
+
+args['switch_radix'] = 32
+args['adaptive'] = 1
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+# --------------------------------- Sim 6 --------------------------------- #
+
+args['switch_radix'] = 64
+args['adaptive'] = 1
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# ------------------------------------------- Non-Filtered Batch ---------------------------------------------- #
+
+# --------------------------------- Sim 7 --------------------------------- #
+
+args['switch_radix'] = 128
+args['adaptive'] = 1
+args['useFilter'] = 0
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------- Sim 8 --------------------------------- #
+
+args['switch_radix'] = 256
+args['adaptive'] = 1
+args['useFilter'] = 0
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------------------- Filtered Batch	------------------------------------------------ #
+
+# --------------------------------- Sim 9 --------------------------------- #
+
+args['switch_radix'] = 128
+args['adaptive'] = 1
+args['useFilter'] = 1
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+# --------------------------------- Sim 10 --------------------------------- #
+
+args['switch_radix'] = 256
+args['adaptive'] = 1
+args['useFilter'] = 1
+
+if sim in sims_to_run:
+	runSim(sim,args) 
+sim = sim + 1
+
+
+
+# clean environment
 subprocess.call(["make", "clean"])
 
-ind = 0
-flow_id = ind; ind = ind + 1
-flow_size = ind; ind = ind + 1
-flow_remainingSize = ind; ind = ind + 1
-flow_arrival = ind; ind = ind + 1
-flow_src = ind; ind = ind + 1
-flow_dst = ind; ind = ind + 1
-flow_FCT = ind; ind = ind + 1
-
-flows = [{},{},{}]
-num_of_flows = [0,0,0]
-total_FCT = [0,0,0]
-total_slowdown = [0,0,0]
-logfile = [open("Results/Solstice.txt", "r"),  open("Results/Lumos.txt", "r"),  open("Results/Eclipse.txt", "r")]
-
-for sched,scheduler_log in enumerate(logfile):
-    for line in scheduler_log:
-        num_of_flows[sched] = num_of_flows[sched] + 1
-        data = [int(elem) for elem in re.findall(r'\d+', line)]
-        flows[sched][data[flow_id]] = data
-        total_FCT[sched] = total_FCT[sched] + data[flow_FCT]
-        total_slowdown[sched] = total_slowdown[sched] + float(data[flow_FCT]) / data[flow_size]
-    scheduler_log.close()
-
-for sched, sched_name in enumerate(["Solstice", "Lumos", "Eclipse"]):
-    avg_FCT = float(total_FCT[sched]) / num_of_flows[sched]
-    avg_slowdown = float(total_slowdown[sched]) / num_of_flows[sched]
-
-    print "Average FCT of " + sched_name , avg_FCT
-    print "Average Slowdown of " + sched_name , avg_slowdown
-
-arrival_times = [[],[],[]]
-FCT = [[],[],[]]
-
-for sched, sched_name in enumerate(["Solstice", "Lumos"]):#,"Eclipse"]):
-    for flow in flows[sched].values():
-        arrival_times[sched].append(flow[flow_arrival])
-        FCT[sched].append( flow[flow_FCT])
-
-FCT[0] = [elem/1.0e3 for elem in FCT[0]]      
-FCT[1] = [elem/1.0e3 for elem in FCT[1]] 
-#FCT[2] = [elem/1.0e3 for elem in FCT[2]]
-arrival_times[0] = [elem/1.0e3 for elem in arrival_times[0]]      
-arrival_times[1] = [elem/1.0e3 for elem in arrival_times[1]] 
-#arrival_times[2] = [elem/1.0e3 for elem in arrival_times[2]]
-        
-plt.scatter(arrival_times[0],FCT[0], color='k', s=25, marker="o", alpha=0.5)
-plt.scatter(arrival_times[1],FCT[1], color='b', s=25, marker="o", alpha=0.5)
-#plt.scatter(arrival_times[2],FCT[2], color='r', s=25, marker="o", alpha=0.5)
-
-#ax = plt.gca()
-#ax.set_yscale('log')
-#ax.set_xscale('log')
-#plt.ylim((1e3, 3e4))
-#plt.grid(which='both', axis='y', alpha=0.5)
-plt.figure(1)
-plt.xlabel('Arrival Times [msec]', fontsize='large')
-plt.ylabel('Flow Completion Times [msec]', fontsize='large')
-plt.legend(['Solstice','Lumos'])#,'Eclipse'])
-plt.xticks(np.arange(0, 30, step=3))
-plt.savefig('Scatter.jpg')
 
 
-plt.figure(2)
-plt.hist(FCT, bins=100)
-plt.xlabel('Flow Completion Times [msec]', fontsize='large')
-plt.legend(['Solstice','Lumos'])#,'Eclipse'])
-plt.savefig('Bins.jpg')
-
-plt.show()

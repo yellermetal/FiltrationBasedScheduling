@@ -16,7 +16,7 @@ public:
 	void enqueue(lms_config_ptr schedule);
 	Config* dequeue();
 	bool isEmpty();
-	int getDemandCompletionTime();
+	int getDemandCompletionTime(int reconfig_penalty);
 
 
 private:

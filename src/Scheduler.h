@@ -18,17 +18,66 @@ using namespace std;
 class Scheduler
 {
 public:
+
+	/**
+	 * Scheduler constructor
+	 *
+	 * @param: name : string - name of the scheduler
+	 * @param: switchRadix : int - the size of the switch
+	 * @param: reconfig_penalty : int - the switch reconfiguration penalty (~20us nominal)
+	 * @param: scheduler : scheduling_function - C implemented scheduling algorithm
+	 *
+	 * @effects: constructs the C++ wrapper for the scheduling algorithm
+	 */
 	Scheduler(string name, int switchRadix, double reconfig_penalty, 
 		lms_config_ptr(*scheduler)(lms_mat_ptr, double));
+
+	/**
+	 * Virtual Destructor - overriden by concrete scheduler classes
+	 */
 	virtual ~Scheduler();
 
+	/**
+	 * Checks scheduler state and returns whether
+	 * scheduler is ready for a new scheduling procedure.
+	 *
+	 * @return: true if this scheduler is ready, false otherwise.
+	 */
 	bool readyToSchedule();
+
+	/**
+	 * Executes scheduling of demandMatrix
+	 *
+	 * @param: a non-null pointer to 2D-array of non-negative integers
+	 *
+	 * @effects: calculates a schedule for the demand matrix and saves it internally.
+	 * 			 Does nothing if the demand matrix is empty ( zeros array )
+	 */
 	void Schedule(int** demandMatrix);
-	void useAdaptiveSchedulingDelay(bool chosen);
+
+	/**
+	 * Toggles the use of an adaptive scheduling delay.
+	 * The adaptive delay is a function of scheduler runtime,
+	 * as well as the overall demand completion time of all configurations in ConfigQueue.
+	 *
+	 * @param: adaptive : bool - client choice
+	 * @effects: if 'adaptive' is true, uses the adaptive scheduling delay method,
+	 * 			 else sets scheduling delay to be TRIVIAL_DELAY (~3ms nominal)
+	 */
+	void useAdaptiveSchedulingDelay(bool adaptive);
+
+	/**
+	 * Gets the next available configuration
+	 *
+	 * @return: the head of the ConfigQueue
+	 */
 	Config* getNextConfig();
-	
-	void reset();
-	void openFile(ofstream& file);
+
+	string getName();
+
+	/**
+	 *
+	 */
 	void update(int clock);
 	
 

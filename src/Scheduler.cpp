@@ -14,6 +14,24 @@ void freeDemandMatrix(int** demandMatrix, int switchRadix) {
 	delete[] demandMatrix;
 }
 
+double comp_time(lms_config_ptr config_list, double reconfiguration_delay) {
+
+	int config_num = 0;
+	int service_time = 0;
+	lms_config_ptr iter = config_list->next;
+
+	while (config_list != NULL) {
+
+		service_time += config_list->coeff;
+		config_num++;
+
+		config_list = iter;
+		if (iter != NULL)
+			iter = iter->next;
+	}
+	return service_time + reconfiguration_delay * config_num;
+}
+
 Scheduler::Scheduler(string _name, int _switchRadix, double _reconfig_penalty, lms_config_ptr(*_scheduler)(lms_mat_ptr, double))
 {
 	switchRadix = _switchRadix;
@@ -22,7 +40,10 @@ Scheduler::Scheduler(string _name, int _switchRadix, double _reconfig_penalty, l
 	scheduler = _scheduler;
 	name = _name;
 
-	reset();
+	schedule = nullptr;
+	runtimeDelay = 0;
+	schedulingDelay = TRIVIAL_DELAY;
+	adaptiveSchedulingDelay = false;
 }
 
 Scheduler::~Scheduler()
@@ -55,7 +76,8 @@ void Scheduler::Schedule(int ** demandMatrix)
 
 	if (adaptiveSchedulingDelay)
 		schedulingDelay = runtimeDelay + max(switchRadix * reconfig_penalty, 
-											 config_queue->getDemandCompletionTime() - runtimeDelay);
+				comp_time(schedule,reconfig_penalty) + config_queue->getDemandCompletionTime(reconfig_penalty)
+				- runtimeDelay);
 	else
 		schedulingDelay = max(TRIVIAL_DELAY, runtimeDelay);
 
@@ -71,30 +93,13 @@ Config * Scheduler::getNextConfig()
 		return config_queue->dequeue();
 }
 
-void Scheduler::useAdaptiveSchedulingDelay(bool chosen)
+void Scheduler::useAdaptiveSchedulingDelay(bool adaptive)
 {
-	adaptiveSchedulingDelay = chosen;
+	adaptiveSchedulingDelay = adaptive;
 }
 
-void Scheduler::reset() {
-	schedule = nullptr;
-	runtimeDelay = 0;
-	schedulingDelay = TRIVIAL_DELAY;
-	adaptiveSchedulingDelay = false;
-}
-
-void Scheduler::openFile(ofstream& file)
-{
-
-	string prefix;
-	if (adaptiveSchedulingDelay)
-		prefix = "./Results/adaptive";
-	else
-		prefix = "./Results/";
-
-	string suffix = ".txt";
-	string filename = prefix + name + suffix;
-	file.open(filename.c_str());
+string Scheduler::getName() {
+	return name;
 }
 
 void Scheduler::update(int clock)

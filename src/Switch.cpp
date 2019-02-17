@@ -14,10 +14,12 @@ void Switch::update(int clock)
 		scheduler->Schedule(demand.getDemand());
 	}
 
-	if (reconfig_delay > 0)
+	if (reconfig_delay > 0) {
 		reconfig_delay--;
+		return;
+	}
 
-	if (!currConfig && reconfig_delay == 0)
+	if (!currConfig)
 		currConfig = scheduler->getNextConfig();
 
 	if (currConfig && currConfig->getTimeDuration() > 0) {

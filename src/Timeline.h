@@ -8,7 +8,7 @@
 #include "SMG.h"
 #include <vector>
 
-#define WINDOW_NUM 10
+#define WINDOW_NUM 30
 
 typedef struct _Timeline_params {
 	int switchRadix;

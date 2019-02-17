@@ -41,12 +41,12 @@ bool ConfigQueue::isEmpty()
 	return config_q.empty();
 }
 
-int ConfigQueue::getDemandCompletionTime()
+int ConfigQueue::getDemandCompletionTime(int reconfig_penalty)
 {
 	int sumDCT = 0;
 
 	for (auto iter = config_q.begin(); iter != config_q.end(); iter++) 
-		sumDCT += (*iter)->getTimeDuration();
+		sumDCT += (*iter)->getTimeDuration() + reconfig_penalty;
 	
 	return sumDCT;
 	
