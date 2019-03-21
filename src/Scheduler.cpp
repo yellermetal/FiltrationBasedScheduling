@@ -1,5 +1,9 @@
 #include "Scheduler.h"
 
+double gettime_us(struct timespec start, struct timespec end) {
+	return (double)( (end.tv_sec - start.tv_sec)*S2US + ((double)(end.tv_nsec - start.tv_nsec))/NS2US );
+}
+
 bool isDemandMatrixEmpty(int** demandMatrix, int switchRadix) {
 	for (int i = 0; i < switchRadix; i++)
 		for (int j = 0; j < switchRadix; j++)
@@ -67,19 +71,27 @@ void Scheduler::Schedule(int ** demandMatrix)
 
 	lms_mat_ptr mat_ptr = Make_Matrix(switchRadix, demandMatrix);
 
-	high_resolution_clock::time_point t1 = high_resolution_clock::now();
-	schedule = scheduler(mat_ptr, reconfig_penalty);
-	high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	struct timespec t1, t2;
 
-	duration<double, micro> fp_us = t2 - t1;
-	runtimeDelay = fp_us.count();
+	//high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t1);
+	schedule = scheduler(mat_ptr, reconfig_penalty);
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &t2);
+	//high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+	//runtimeDelay = duration_cast<microseconds>( t2 - t1 ).count();
+	runtimeDelay = gettime_us(t1, t2);
 
 	if (adaptiveSchedulingDelay)
-		schedulingDelay = runtimeDelay + max(switchRadix * reconfig_penalty, 
+		schedulingDelay = runtimeDelay + max(switchRadix * reconfig_penalty,
 				comp_time(schedule,reconfig_penalty) + config_queue->getDemandCompletionTime(reconfig_penalty)
 				- runtimeDelay);
-	else
+	else {
 		schedulingDelay = max(TRIVIAL_DELAY, runtimeDelay);
+
+	}
+
+	cout << name << ", radix: " << switchRadix <<  " - runtime: " << runtimeDelay << endl;
 
 	Free_Matrix(mat_ptr);
 	freeDemandMatrix(demandMatrix, switchRadix);
@@ -111,7 +123,7 @@ void Scheduler::update(int clock)
 		if (runtimeDelay == 0) {
 			config_queue->enqueue(schedule);
 			if (schedule)
-				cout << name << " commited a schedule." << endl;
+				//cout << name << " commited a schedule." << endl;
 			schedule = nullptr;
 		}
 	}
@@ -119,7 +131,20 @@ void Scheduler::update(int clock)
 	if (schedulingDelay > 0)
 		schedulingDelay--;
 
-	else
-		cout << "Starting scheduling," << " time: " << clock << endl;
+	//else
+		//cout << "Starting scheduling," << " time: " << clock << endl;
+
+	ofstream file;
+
+	string prefix = "./Results/";
+	string suffix = "QueueSize.txt";
+	string filename = prefix + getName() + suffix;
+
+	file.open(filename.c_str(), ofstream::app);
+	assert(file.is_open());
+	file << "Time: " << clock << ", ConfigQueue Size: "
+			<< config_queue->getDemandCompletionTime(reconfig_penalty) << endl;
+
+	file.close();
 
 }

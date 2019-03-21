@@ -10,7 +10,7 @@ void Switch::update(int clock)
 {
 
 	if (scheduler->readyToSchedule()) {
-		cout << "Switch: " << "Begin Scheduling, time: " << clock << endl;
+		//cout << "Switch: " << "Begin Scheduling, time: " << clock << endl;
 		scheduler->Schedule(demand.getDemand());
 	}
 

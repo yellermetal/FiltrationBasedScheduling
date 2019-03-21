@@ -7,6 +7,9 @@
 #include "Flow.h"
 #include "SMG.h"
 #include <vector>
+#include <algorithm>
+#include <functional>
+
 
 #define WINDOW_NUM 30
 

@@ -15,6 +15,9 @@
 using namespace std::chrono;
 using namespace std;
 
+#define S2US 1000000
+#define NS2US 1000
+
 class Scheduler
 {
 public:

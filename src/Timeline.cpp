@@ -119,6 +119,19 @@ int ** FilteredTimeline::getDemand()
 	for (int i = 0; i < switchRadix; ++i)
 		demandMatrix[i] = new int[switchRadix]();
 
+	vector<int> sizes;
+	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
+
+		Flow* flow = *iter;
+		if (flow->markedForScheduling == false &&
+			flow->timestamp <= currTime) {
+			sizes.push_back( flow->remainingSize + flow->getTimeWaiting(currTime) );
+		}
+	}
+
+	nth_element(sizes.begin(), sizes.begin() + sizes.size()/2, sizes.end());
+	int median = sizes[sizes.size()/2];
+
 
 	for (auto iter = flows.begin(); iter != flows.end(); iter++) {
 		
@@ -129,7 +142,7 @@ int ** FilteredTimeline::getDemand()
 
 		if (flow->markedForScheduling == false &&
 			flow->timestamp <= currTime &&
-			flow->remainingSize + flow->getTimeWaiting(currTime) >= threshold) {
+			flow->remainingSize + flow->getTimeWaiting(currTime) >= median) {
 
 				demandMatrix[src][dst] += flow->remainingSize;
 				flow->markedForScheduling = true;

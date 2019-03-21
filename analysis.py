@@ -9,7 +9,9 @@
 import re
 import matplotlib.pyplot as plt
 import numpy as np
+#import pylab as p
 import os
+
 
 
 
@@ -23,22 +25,6 @@ flow_dst = ind; ind = ind + 1
 flow_FCT = ind; ind = ind + 1
 
 TO_MSEC = 1.0e3
-gamma = 0.8
-
-def moving_average(x,y):
-    data = []
-    for i in range(len(x)):
-        data.append((x[i], y[i]))
-    data.sort(key=lambda pair: pair[0])
-    
-    moving_avg = [0]
-	
-    fcts = [pair[1] for pair in data]
-    
-    for n in range(len(fcts)):
-        moving_avg.append( moving_avg[n]*gamma + fcts[n])
-    
-    return moving_avg[1:]
 
 # Sim-#1: switch_radix: 16, reconfig_penalty: 20, time_window_width: 3000, 
 # light_flows_num: 12, heavy_flows_num: 4, light_range: [1,16], 
@@ -66,79 +52,84 @@ scheduler_names = ["Solstice", "Lumos"]
 
 class LogData:
     
-    def __init__(self, logfile_path, params):
+    def __init__(self, flows_path, queue_path, params):
         
-        self.logfile_name = logfile_path
+        self.flows_path = flows_path
+        self.queue_path = queue_path
+        
         for name in scheduler_names:
-            if name in logfile_path:
+            if name in flows_path:
                 self.scheduler = name
        
         self.params = params
         self.flows = {}
-        self.num_of_flows = 0
-        self.avg_FCT = 0
-        self.avg_slowdown = 0
         
-        scheduler_log = open(logfile_path)
+        flows_log = open(flows_path)
         
-        for line in scheduler_log:
-            self.num_of_flows = self.num_of_flows + 1
+        for line in flows_log:
             data = [int(elem) for elem in re.findall(r'\d+', line)]
             self.flows[data[flow_id]] = data
-            self.avg_FCT = self.avg_FCT + data[flow_FCT]
-            self.avg_slowdown = self.avg_slowdown + float(data[flow_FCT]) / data[flow_size]
             
-        scheduler_log.close()
-        
-        self.avg_FCT = float(self.avg_FCT) / self.num_of_flows
-        self.avg_slowdown = float(self.avg_slowdown) / self.num_of_flows
+        flows_log.close()
               
-        self.arrival_times = []
         self.flow_completion_times = []
         for flow in self.flows.values():
-            self.arrival_times.append(flow[flow_arrival]  / TO_MSEC)
             self.flow_completion_times.append(flow[flow_FCT] / TO_MSEC)
-
-
-        self.moving_avg = moving_average(self.arrival_times, self.flow_completion_times)
+            
+        self.FCTs = {}
         
-    def displayAdaptive(self, fig_num, title):
-        plt.figure(fig_num)
+        for fct in self.flow_completion_times:
+            self.FCTs[fct] = self.FCTs.get(fct, 0) + 1
+            
+        self.queue_size = []
+        queue_log = open(queue_path)
         
-        if self.params['adaptive']:
-            lbl = 'Adaptive ' + self.scheduler
-            style = '--'
-            colr = 'b'
-        else:
-            lbl = self.scheduler
-            style = '-'
-            colr = 'r'
+        for line in queue_log:
+            data = [int(elem) for elem in re.findall(r'\d+', line)]
+            self.queue_size.append(data[1] / TO_MSEC)
+        queue_log.close()
         
-        plt.plot(sorted(self.arrival_times), self.moving_avg, ls=style, color=colr, label=lbl)
-        plt.xlabel('Arrival Times [msec]', fontsize='large')
-        plt.ylabel('Mean Flow Completion Times [msec]', fontsize='large')
-        plt.legend()
-        plt.title(title)
-        plt.grid(True)
-        
-    def displayFiltered(self, fig_num, title):
-        plt.figure(fig_num)
         
         if self.params['useFilter']:
-            lbl = 'Filtered ' + self.scheduler
-            style = '--'
-            colr = 'b'
+            self.lbl = 'Filtered ' + self.scheduler
+            self.colr = 'b'
+        elif self.params['adaptive'] and self.params['switch_radix'] < 128:
+            self.lbl = 'Adaptive ' + self.scheduler
+            self.colr = 'b'
         else:
-            lbl = self.scheduler
-            style = '-'
-            colr = 'r'
+            self.lbl = self.scheduler
+            self.colr = 'r'
         
-        plt.plot(sorted(self.arrival_times), self.moving_avg, ls=style, color=colr, label=lbl)
-        plt.xlabel('Arrival Times [msec]', fontsize='large')
-        plt.ylabel('Mean Flow Completion Times [msec]', fontsize='large')
-        plt.legend()
+    def displayFlows(self, fig_num, title):
+        plt.figure(fig_num)
+        
+        fcts = sorted(self.FCTs.keys())
+
+        y,binEdges=np.histogram(fcts,bins=100)
+        bincenters = 0.5*(binEdges[1:]+binEdges[:-1])
+        plt.plot(bincenters,y, color=self.colr, label=self.lbl)
+        plt.xlabel('Flow Completion Times [msec]', fontsize='large')
+        plt.ylabel('Occurences', fontsize='large')
+        plt.legend(loc='upper right', shadow=True)
         plt.title(title)
         plt.grid(True)
+        
+        plt.savefig('Figures' + "/" + title)
+        
+        
+    def displayQueueSize(self, fig_num, title):
+        plt.figure(fig_num)
+        
+        time = np.array(range(len(self.queue_size))) / TO_MSEC
+        
+        plt.plot(time , self.queue_size, color=self.colr, label=self.lbl)
+        plt.ylabel('DCT in Queue [msec]', fontsize='large')
+        plt.xlabel('Time [msec]', fontsize='large')
+        plt.legend(loc='upper right', shadow=True)
+        plt.title(title)
+        plt.grid(True)
+        
+        plt.savefig('Figures' + "/" + title)
 
 sims = []
 SimsDesc = open('SimsDesc.txt')
@@ -148,25 +139,19 @@ for simDesc_line in SimsDesc:
     directory = "Results-Sim" + str(params['sim_num'])
     logfiles = os.listdir(directory)
     
-    for logfile in logfiles:
-        if 'Lumos' in logfile:
-            lumos_data = LogData(directory + "/" + logfile, params)
-        elif 'Solstice' in logfile:
-            solstice_data = LogData(directory + "/" + logfile, params)
+    direc = directory + "/"
+    
+    lumos_data = LogData(direc + "LumosFlows.txt", direc + "LumosQueueSize.txt", params)
+    solstice_data = LogData(direc + "SolsticeFlows.txt", direc + "SolsticeQueueSize.txt", params)
             
     sims.append( {'params':params, 'Lumos': lumos_data, 'Solstice': solstice_data} )
     
 SimsDesc.close()    
     
 for num1, scheduler in enumerate(['Lumos', 'Solstice']):
-    for num2, switch_radix in enumerate([16, 32, 64]):
+    for num2, switch_radix in enumerate([16, 32, 64, 128, 256]):
         for sim in sims:
             if sim['params']['switch_radix'] == switch_radix:
-                sim[scheduler].displayAdaptive(3*num1 + num2, 'Switch Radix: ' + str(switch_radix))
-                
-    for num2, switch_radix in enumerate([128, 256]):
-        for sim in sims:
-            if sim['params']['switch_radix'] == switch_radix:
-                sim[scheduler].displayFiltered(2*num1 + num2 + 6, 'Switch Radix: ' + str(switch_radix))
-                
-plt.show()               
+                sim[scheduler].displayFlows(5*num1 + num2, scheduler + ' FCT Distribution, (Switch Radix ' + str(switch_radix) + ")")
+                sim[scheduler].displayQueueSize(5*num1 + num2 + 10, scheduler + ' DCT in ConfigQueue, (Switch Radix ' + str(switch_radix) + ")")
+             

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
 										new Solstice(params.switchRadix, reconfig_penalty),
 										};//new Eclipse(params.switchRadix, reconfig_penalty) };
 	
-	cout.rdbuf(nullptr);
+	//cout.rdbuf(nullptr);
 	//freopen( "console.txt", "w", stdout );
 
 	for (int sched = 0; sched < NUM_SCHED; sched++) {
@@ -58,8 +58,8 @@ int main(int argc, char *argv[]) {
 		ofstream file;
 
 		string prefix = "./Results/";
-		string suffix = ".txt";
-		string filename = prefix + schedulers[sched]->getName() + currentDateTime() + suffix;
+		string suffix = "Flows.txt";
+		string filename = prefix + schedulers[sched]->getName() + suffix;
 
 		file.open(filename.c_str());
 		assert(file.is_open());
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
-
+/*
 const string currentDateTime() {
     time_t     now = time(0);
     struct tm  tstruct;
@@ -83,3 +83,4 @@ const string currentDateTime() {
 
     return buf;
 }
+*/

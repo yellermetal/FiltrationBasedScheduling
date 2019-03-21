@@ -58,9 +58,9 @@ args['light_range'] = [1,16]
 args['heavy_range'] = [16,100]
 args['adaptive'] = 0
 args['useFilter'] = 0
-args['threshold'] = 20*8
+args['threshold'] = 20
 
-sims_to_run = range(1,11)
+sims_to_run = range(11)
 sim = 1
 
 # --------------------------------------------- Non-Adaptive Batch	--------------------------------------------- #
